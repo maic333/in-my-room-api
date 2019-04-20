@@ -1,6 +1,7 @@
 import { storageService } from './storage.service';
 import Room from '../types/room';
 import v4 from 'uuid/v4';
+import { ForbiddenError, ResourceNotFoundError } from '../types/errors';
 
 class RoomService {
   createRoom(room: Room): Room {
@@ -60,6 +61,27 @@ class RoomService {
       // save user
       storageService.saveUser(user);
     }
+  }
+
+  getRoomForUser(userId: string, roomId: string): Room {
+    // get user
+    const user = storageService.getUser(userId);
+    // get room
+    const room = storageService.getRoom(roomId);
+
+    if (!user || !room) {
+      throw new ResourceNotFoundError('Resource not found');
+    }
+
+    if (!this.roomHasParticipant(room, userId)) {
+      throw new ForbiddenError('User is not a participant');
+    }
+
+    return room;
+  }
+
+  roomHasParticipant(room: Room, userId: string): boolean {
+    return room && room.participantsIds.indexOf(userId) >= 0;
   }
 }
 

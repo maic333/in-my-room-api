@@ -29,6 +29,20 @@ class RoomController {
     res.json(newRoom);
   }
 
+  @ApiRoute('rooms/:roomId', ApiHttpMethod.GET, {checkAuth: true})
+  getRoom(req: ApiRequest, res: ApiResponse) {
+    try {
+      const room = roomService.getRoomForUser(req.session.user.id, req.params.roomId);
+      res.json(room);
+    } catch (e) {
+      const statusCode = e.statusCode || 500;
+      res
+        .status(statusCode)
+        .send(e.toString());
+    }
+
+  }
+
   @ApiRoute('rooms/:roomId/join', ApiHttpMethod.POST, {checkAuth: true})
   joinRoom(req: ApiRequest, res: ApiResponse) {
     try {
