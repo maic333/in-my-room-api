@@ -2,6 +2,7 @@ import { storageService } from './storage.service';
 import Room from '../types/room';
 import v4 from 'uuid/v4';
 import { ForbiddenError, ResourceNotFoundError } from '../types/errors';
+import { RoomChatMessage } from '../types/chat-service-message';
 
 class RoomService {
   createRoom(room: Room): Room {
@@ -82,6 +83,14 @@ class RoomService {
 
   roomHasParticipant(room: Room, userId: string): boolean {
     return room && room.participantsIds.indexOf(userId) >= 0;
+  }
+
+  getRoomChatHistory(roomId: string): RoomChatMessage[] {
+    return storageService.getRoomChatHistory(roomId);
+  }
+
+  addRoomChatMessage(roomId: string, message: RoomChatMessage) {
+    storageService.addRoomChatMessage(roomId, message);
   }
 }
 
