@@ -3,6 +3,7 @@ import Room from '../types/room';
 import v4 from 'uuid/v4';
 import { ForbiddenError, ResourceNotFoundError } from '../types/errors';
 import { RoomChatMessage } from '../types/chat-service-message';
+import { userService } from './user.service';
 
 class RoomService {
   createRoom(room: Room): Room {
@@ -13,6 +14,8 @@ class RoomService {
 
     // save room
     storageService.saveRoom(room);
+
+    this.extendRoomObject(room);
 
     return room;
   }
@@ -37,7 +40,7 @@ class RoomService {
       }, []);
   }
 
-  joinRoom(userId: string, roomId: string) {
+  joinRoom(userId: string, roomId: string): Room {
     // get user
     const user = storageService.getUser(userId);
     // get room
@@ -62,6 +65,10 @@ class RoomService {
       // save user
       storageService.saveUser(user);
     }
+
+    this.extendRoomObject(room);
+
+    return room;
   }
 
   getRoomForUser(userId: string, roomId: string): Room {
@@ -91,6 +98,20 @@ class RoomService {
 
   addRoomChatMessage(roomId: string, message: RoomChatMessage) {
     storageService.addRoomChatMessage(roomId, message);
+  }
+
+  private extendRoomObject(room: Room): Room {
+    // add owner
+    if (room.ownerId) {
+      room.owner = userService.getUser(room.ownerId);
+    }
+
+    if (room.participantsIds && room.participantsIds.length > 0) {
+      room.participants = room.participantsIds
+        .map((participantId) => userService.getUser(participantId));
+    }
+
+    return room;
   }
 }
 

@@ -40,17 +40,14 @@ class RoomController {
         .status(statusCode)
         .send(e.toString());
     }
-
   }
 
   @ApiRoute('rooms/:roomId/join', ApiHttpMethod.POST, {checkAuth: true})
   joinRoom(req: ApiRequest, res: ApiResponse) {
     try {
-      roomService.joinRoom(req.session.user.id, req.params.roomId);
+      const room = roomService.joinRoom(req.session.user.id, req.params.roomId);
 
-      res
-        .status(204)
-        .send();
+      res.json(room);
     } catch (e) {
       res
         .status(404)

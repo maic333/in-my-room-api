@@ -8,7 +8,7 @@ import { roomService } from './room.service';
 import {
   ChatHistoryMessage,
   ChatMessageType,
-  ClientMessage,
+  ClientMessage, NewParticipantMessage,
   RoomChatMessage,
   ServerMessage
 } from '../types/chat-service-message';
@@ -77,6 +77,18 @@ class ChatService {
       this.roomClients[room.id] = this.roomClients[room.id] || [];
       this.roomClients[room.id].push(ws);
 
+      // inform the other room participants about the new client
+      const newClientMessage: NewParticipantMessage = {
+        type: ChatMessageType.NEW_PARTICIPANT,
+        user
+      };
+      this.roomClients[room.id]
+        // omit current user
+        .filter((client) => ws !== client)
+        .forEach((wsClient) => {
+          wsClient.send(JSON.stringify(newClientMessage));
+        });
+
       ws.on('message', (message: string) => {
         // new message received from client
         try {
@@ -97,9 +109,12 @@ class ChatService {
               type: ChatMessageType.SERVER_MESSAGE,
               message: chatMessage
             };
-            this.roomClients[room.id].forEach((wsClient) => {
-              wsClient.send(JSON.stringify(serverMessage));
-            });
+            this.roomClients[room.id]
+              // omit current user
+              .filter((client) => ws !== client)
+              .forEach((wsClient) => {
+                wsClient.send(JSON.stringify(serverMessage));
+              });
 
             // update chat history
             roomService.addRoomChatMessage(room.id, chatMessage);
@@ -107,6 +122,12 @@ class ChatService {
         } catch (e) {
           // do nothing
         }
+      });
+
+      ws.on('close', () => {
+        // remove client from room
+        this.roomClients[room.id] = this.roomClients[room.id]
+          .filter((client) => client !== ws);
       });
     });
   }

@@ -9,7 +9,8 @@ export interface RoomChatMessage {
 export enum ChatMessageType {
   CLIENT_MESSAGE = 'client-message',
   SERVER_MESSAGE = 'server-message',
-  CHAT_HISTORY = 'chat-history'
+  CHAT_HISTORY = 'chat-history',
+  NEW_PARTICIPANT = 'new-participant'
 }
 
 export interface ClientMessage {
@@ -25,4 +26,9 @@ export interface ServerMessage {
 export interface ChatHistoryMessage {
   type: ChatMessageType.CHAT_HISTORY;
   messages: RoomChatMessage[];
+}
+
+export interface NewParticipantMessage {
+  type: ChatMessageType.NEW_PARTICIPANT;
+  user: User;
 }
