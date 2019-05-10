@@ -1,17 +1,44 @@
 import * as http from 'http';
 import app from './app';
-import { chatService } from './services/chat.service';
+import { ChatServer } from './modules/chat-socket/server';
+import User from './types/user';
+import { verify } from 'jsonwebtoken';
+import { JwtPayload } from './types/jwt-payload';
+import { userService } from './services/user.service';
 
 // Create Express server
 const server = http.createServer(app);
-
-// Initialize the Chat service (Websocket)
-chatService.init(server);
 
 /**
  * Start Express server.
  */
 server.listen(app.get('port'), () => {
+  // create the Chat server
+  const chatServer = new ChatServer<User>({
+    options: {
+      server
+    },
+    authenticateClient: (reqPayload: {token: string}): Promise<User> => {
+      return new Promise<User>((resolve, reject) => {
+        // check jwt
+        verify(reqPayload.token, process.env.JWT_KEY, (err, payload: JwtPayload) => {
+          if (err || !payload.userId) {
+            return reject('Unauthorized');
+          }
+
+          // get user with the given ID
+          const user = userService.getUser(payload.userId);
+
+          if (!user) {
+            return reject('Unauthorized');
+          }
+
+          resolve(user);
+        });
+      });
+    }
+  });
+
   console.log(
     '  App is running at http://localhost:%d in %s mode',
     app.get('port'),

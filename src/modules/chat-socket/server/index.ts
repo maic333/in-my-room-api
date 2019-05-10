@@ -1,6 +1,5 @@
 import * as WebSocket from 'ws';
-import { ChatEvent } from '../types/chat-event';
-import { ChatEventType } from '../types/chat-event-type';
+import { ChatEvent, ChatEventType } from '../types/chat-event';
 import { ChatServerConfig } from '../types/chat-server-config';
 import Room from '../types/room';
 
@@ -26,24 +25,33 @@ export class ChatServer<UserT extends Object> {
 
     this.wss.on('connection', (ws: WebSocket) => {
       ws.on('message', (message: string) => {
-        try {
-          const event: ChatEvent = JSON.parse(message);
-          switch (event.type) {
-            case ChatEventType.CLIENT_AUTH_REQUEST:
-              this.authenticateClient(ws, event.body);
-              break;
-          }
-        } catch (err) {}
+        this.handleClientMessage(ws, message);
       });
     });
   }
 
   /**
+   * Handle a client message received through the Websocket channel
+   */
+  private handleClientMessage(ws: WebSocket, message: string): void {
+    try {
+      const event: ChatEvent = JSON.parse(message);
+      switch (event.type) {
+        case ChatEventType.CLIENT_AUTH_REQUEST:
+          this.authenticateClient(ws, event);
+          break;
+      }
+    } catch (err) {
+      // drop wrongly formatted messages
+    }
+  }
+
+  /**
    * Authenticate client
    */
-  private authenticateClient(ws: WebSocket, payload: any): void {
+  private authenticateClient(ws: WebSocket, event: ChatEvent): void {
     // get authentication result
-    const authClientResult = this.config.authenticateClient(payload);
+    const authClientResult = this.config.authenticateClient(event.body);
 
     // authenticate client
     if ((authClientResult as Promise<any>).then) {
@@ -51,17 +59,34 @@ export class ChatServer<UserT extends Object> {
       (authClientResult as Promise<UserT>)
         .then((user: UserT) => {
           this.clientUserMap.set(ws, user);
+
+          this.sendClientResponse(ws, ChatEventType.CLIENT_AUTH_SUCCESS, null, event);
         })
         .catch((err) => {
-          // #TODO send back error
+          this.sendClientResponse(ws, ChatEventType.CLIENT_AUTH_ERROR, null, event);
         });
     } else {
       // it is a simple function
       if (authClientResult) {
         this.clientUserMap.set(ws, authClientResult as UserT);
+
+        this.sendClientResponse(ws, ChatEventType.CLIENT_AUTH_SUCCESS, null, event);
       } else {
-        // #TODO send back error
+        this.sendClientResponse(ws, ChatEventType.CLIENT_AUTH_ERROR, null, event);
       }
     }
+  }
+
+  /**
+   * Send a formatted response to the client
+   */
+  private sendClientResponse(ws: WebSocket, eventType: ChatEventType, body: any, originalEvent: ChatEvent): void {
+    const res: ChatEvent = {
+      type: eventType,
+      body: body,
+      transactionId: originalEvent.transactionId
+    };
+
+    ws.send(JSON.stringify(res));
   }
 }
