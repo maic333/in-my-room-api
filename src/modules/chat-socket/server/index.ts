@@ -1,7 +1,6 @@
 import * as WebSocket from 'ws';
 import { ChatEvent, ChatEventType } from '../types/chat-event';
 import { ChatServerConfig } from '../types/chat-server-config';
-import Room from '../types/room';
 
 export class ChatServer<UserT extends Object> {
   // server configuration object
@@ -10,14 +9,8 @@ export class ChatServer<UserT extends Object> {
   private wss: WebSocket.Server;
   // map each Websocket client to a user
   private clientUserMap = new WeakMap<WebSocket, UserT>();
-
-  // #TODO below
-  // list of rooms
-  private rooms: Room<UserT>[] = [];
-  // list of participants for each room
-  private roomClients = new WeakMap<Room<UserT>, WebSocket[]>();
-  // list of rooms for each user
-  private userRooms = new WeakMap<UserT, Room<UserT>[]>();
+  // map each user to a Websocket client
+  private userClientMap = new WeakMap<UserT, WebSocket>();
 
   constructor(config: ChatServerConfig<UserT>) {
     this.config = config;
@@ -40,6 +33,14 @@ export class ChatServer<UserT extends Object> {
         case ChatEventType.CLIENT_AUTH_REQUEST:
           this.authenticateClient(ws, event);
           break;
+
+        case ChatEventType.CLIENT_MESSAGE:
+          this.receiveClientMessage(ws, event);
+          break;
+
+        default:
+          // drop unrecognized message
+          break;
       }
     } catch (err) {
       // drop wrongly formatted messages
@@ -47,34 +48,59 @@ export class ChatServer<UserT extends Object> {
   }
 
   /**
+   * Handle a chat message received from a client
+   */
+  private receiveClientMessage(ws: WebSocket, event: ChatEvent): void {
+    if (!this.config.onClientMessage) {
+      // client message handler not configured, return success
+      return this.sendClientResponse(ws, ChatEventType.CLIENT_REQUEST_SUCCESS, null, event);
+    }
+
+    // get handler result
+    const clientMessageResult = this.config.onClientMessage(event.body);
+
+    if (!(clientMessageResult as Promise<boolean>).then) {
+      // handler is not a Promise
+      throw new Error(`Method 'onClientMessage' must return a Promise.`);
+    }
+
+    // call Promise handler
+    (clientMessageResult as Promise<any>)
+      .then((result: any) => {
+        this.sendClientResponse(ws, ChatEventType.CLIENT_REQUEST_SUCCESS, result, event);
+      })
+      .catch((err) => {
+        this.sendClientResponse(ws, ChatEventType.CLIENT_REQUEST_ERROR, err, event);
+      });
+  }
+
+  /**
    * Authenticate client
    */
   private authenticateClient(ws: WebSocket, event: ChatEvent): void {
-    // get authentication result
-    const authClientResult = this.config.authenticateClient(event.body);
-
-    // authenticate client
-    if ((authClientResult as Promise<any>).then) {
-      //  it is a Promise
-      (authClientResult as Promise<UserT>)
-        .then((user: UserT) => {
-          this.clientUserMap.set(ws, user);
-
-          this.sendClientResponse(ws, ChatEventType.CLIENT_AUTH_SUCCESS, null, event);
-        })
-        .catch((err) => {
-          this.sendClientResponse(ws, ChatEventType.CLIENT_AUTH_ERROR, null, event);
-        });
-    } else {
-      // it is a simple function
-      if (authClientResult) {
-        this.clientUserMap.set(ws, authClientResult as UserT);
-
-        this.sendClientResponse(ws, ChatEventType.CLIENT_AUTH_SUCCESS, null, event);
-      } else {
-        this.sendClientResponse(ws, ChatEventType.CLIENT_AUTH_ERROR, null, event);
-      }
+    if (!this.config.onClientAuthentication) {
+      // client authentication handler not configured
+      throw new Error(`Method 'onClientAuthentication' is not configured.`);
     }
+
+    // get authentication handler result
+    const authClientResult = this.config.onClientAuthentication(event.body);
+
+    if (!(authClientResult as Promise<UserT>).then) {
+      // handler is not a Promise
+      throw new Error(`Method 'onClientAuthentication' must return a Promise.`);
+    }
+
+    // call Promise handler
+    (authClientResult as Promise<UserT>)
+      .then((user: UserT) => {
+        this.clientUserMap.set(ws, user);
+
+        this.sendClientResponse(ws, ChatEventType.CLIENT_REQUEST_SUCCESS, null, event);
+      })
+      .catch((err) => {
+        this.sendClientResponse(ws, ChatEventType.CLIENT_REQUEST_ERROR, err, event);
+      });
   }
 
   /**
@@ -88,5 +114,29 @@ export class ChatServer<UserT extends Object> {
     };
 
     ws.send(JSON.stringify(res));
+  }
+
+  /**
+   * Map a user to a Websocket client
+   */
+  private mapUserClient(user: UserT, ws: WebSocket): void {
+    this.clientUserMap.set(ws, user);
+    this.userClientMap.set(user, ws);
+  }
+
+  /**
+   * Remove a client and the corresponding user from the maps
+   */
+  private disconnectClient(ws: WebSocket): void {
+    // get corresponding user
+    const user: UserT = this.clientUserMap.get(ws);
+    // remove client from the map
+    this.clientUserMap.delete(ws);
+
+    const currentWs = this.userClientMap.get(user);
+    if (currentWs === ws) {
+      // remove user from the map
+      this.userClientMap.delete(user);
+    }
   }
 }

@@ -18,19 +18,19 @@ server.listen(app.get('port'), () => {
     options: {
       server
     },
-    authenticateClient: (reqPayload: {token: string}): Promise<User> => {
+    onClientAuthentication: (reqPayload: { token: string }): Promise<User> => {
       return new Promise<User>((resolve, reject) => {
         // check jwt
         verify(reqPayload.token, process.env.JWT_KEY, (err, payload: JwtPayload) => {
           if (err || !payload.userId) {
-            return reject('Unauthorized');
+            return reject();
           }
 
           // get user with the given ID
           const user = userService.getUser(payload.userId);
 
           if (!user) {
-            return reject('Unauthorized');
+            return reject();
           }
 
           resolve(user);
@@ -40,11 +40,11 @@ server.listen(app.get('port'), () => {
   });
 
   console.log(
-    '  App is running at http://localhost:%d in %s mode',
+    'App is running at http://localhost:%d in %s mode',
     app.get('port'),
     app.get('env')
   );
-  console.log('  Press CTRL-C to stop\n');
+  console.log('Press CTRL-C to stop\n');
 });
 
 export default server;

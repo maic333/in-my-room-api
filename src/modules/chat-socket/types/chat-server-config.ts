@@ -4,5 +4,7 @@ export interface ChatServerConfig<UserT> {
   // options for creating the Websocket server
   options: ServerOptions;
   // client authentication handler
-  authenticateClient: (payload: any) => null | UserT | Promise<UserT>;
+  onClientAuthentication: (payload: any) => Promise<UserT>;
+  // client message handler
+  onClientMessage?: (payload: any) => Promise<any>;
 }

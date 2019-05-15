@@ -9,16 +9,16 @@ export enum ChatEventType {
   CLIENT_AUTH_REQUEST = 'CLIENT_AUTH_REQUEST',
   // chat message sent from client to server
   CLIENT_MESSAGE = 'CLIENT_MESSAGE',
-  // error response for wrongly formatted messages
-  INVALID_CHAT_MESSAGE = 'INVALID_CHAT_MESSAGE',
 
   /**
    * Server to Client
    */
-  // success response for the authentication request
-  CLIENT_AUTH_SUCCESS = 'CLIENT_AUTH_SUCCESS',
-  // error response for the authentication request
-  CLIENT_AUTH_ERROR = 'CLIENT_AUTH_ERROR',
+  // success response for any request
+  CLIENT_REQUEST_SUCCESS = 'CLIENT_REQUEST_SUCCESS',
+  // error response for any client request
+  CLIENT_REQUEST_ERROR = 'CLIENT_REQUEST_ERROR',
+
+  // #TODO below
   // chat message sent from server to client(s) (usually via broadcast)
   CHAT_MESSAGE = 'CHAT_MESSAGE',
   // chat history sent from server to client
