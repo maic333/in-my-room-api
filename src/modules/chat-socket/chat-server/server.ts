@@ -1,6 +1,6 @@
 import * as WebSocket from 'ws';
-import { ChatEvent, ChatEventType } from '../types/chat-event';
-import { ChatServerConfig } from '../types/chat-server-config';
+import { ChatEvent, ChatEventType } from '../chat-types/chat-event';
+import { ChatServerConfig } from '../chat-types/chat-server-config';
 
 export class ChatServer<UserT extends Object> {
   // server configuration object
@@ -20,6 +20,12 @@ export class ChatServer<UserT extends Object> {
       ws.on('message', (message: string) => {
         this.handleClientMessage(ws, message);
       });
+    });
+  }
+
+  public sendMessage(user: UserT, message: any): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+
     });
   }
 
@@ -51,56 +57,52 @@ export class ChatServer<UserT extends Object> {
    * Handle a chat message received from a client
    */
   private receiveClientMessage(ws: WebSocket, event: ChatEvent): void {
+    // check if client is authenticated
+    const user: UserT = this.clientUserMap.get(ws);
+
+    if (!user) {
+      // client is not authenticated; return error
+      return this.sendClientResponse(ws, ChatEventType.CLIENT_REQUEST_ERROR, 'Unauthorized', event);
+    }
+
     if (!this.config.onClientMessage) {
-      // client message handler not configured, return success
+      // client message handler not configured; return success
       return this.sendClientResponse(ws, ChatEventType.CLIENT_REQUEST_SUCCESS, null, event);
     }
 
-    // get handler result
-    const clientMessageResult = this.config.onClientMessage(event.body);
-
-    if (!(clientMessageResult as Promise<boolean>).then) {
-      // handler is not a Promise
-      throw new Error(`Method 'onClientMessage' must return a Promise.`);
-    }
-
-    // call Promise handler
-    (clientMessageResult as Promise<any>)
-      .then((result: any) => {
-        this.sendClientResponse(ws, ChatEventType.CLIENT_REQUEST_SUCCESS, result, event);
-      })
-      .catch((err) => {
-        this.sendClientResponse(ws, ChatEventType.CLIENT_REQUEST_ERROR, err, event);
-      });
+    // call external handler
+    this.config.onClientMessage(
+      {
+        message: event.body,
+        user
+      },
+      {
+        send: (message: any) => {
+          this.sendClientResponse(ws, ChatEventType.CLIENT_REQUEST_SUCCESS, message, event);
+        },
+        error: (error: any) => {
+          this.sendClientResponse(ws, ChatEventType.CLIENT_REQUEST_ERROR, error, event);
+        }
+      }
+    );
   }
 
   /**
    * Authenticate client
    */
   private authenticateClient(ws: WebSocket, event: ChatEvent): void {
-    if (!this.config.onClientAuthentication) {
-      // client authentication handler not configured
-      throw new Error(`Method 'onClientAuthentication' is not configured.`);
-    }
-
-    // get authentication handler result
-    const authClientResult = this.config.onClientAuthentication(event.body);
-
-    if (!(authClientResult as Promise<UserT>).then) {
-      // handler is not a Promise
-      throw new Error(`Method 'onClientAuthentication' must return a Promise.`);
-    }
-
-    // call Promise handler
-    (authClientResult as Promise<UserT>)
-      .then((user: UserT) => {
-        this.clientUserMap.set(ws, user);
-
-        this.sendClientResponse(ws, ChatEventType.CLIENT_REQUEST_SUCCESS, null, event);
-      })
-      .catch((err) => {
-        this.sendClientResponse(ws, ChatEventType.CLIENT_REQUEST_ERROR, err, event);
-      });
+    // call the authentication handler
+    this.config.onClientAuthentication(
+      {message: event.body},
+      {
+        send: (user: UserT) => {
+          this.sendClientResponse(ws, ChatEventType.CLIENT_REQUEST_SUCCESS, null, event);
+        },
+        error: (error: any) => {
+          this.sendClientResponse(ws, ChatEventType.CLIENT_REQUEST_ERROR, error, event);
+        }
+      }
+    );
   }
 
   /**

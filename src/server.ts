@@ -1,6 +1,6 @@
 import * as http from 'http';
 import app from './app';
-import { ChatServer } from './modules/chat-socket/server';
+import { ChatServer } from './modules/chat-socket/rr-socket-server/index';
 import User from './types/user';
 import { verify } from 'jsonwebtoken';
 import { JwtPayload } from './types/jwt-payload';
@@ -18,25 +18,24 @@ server.listen(app.get('port'), () => {
     options: {
       server
     },
-    onClientAuthentication: (reqPayload: { token: string }): Promise<User> => {
-      return new Promise<User>((resolve, reject) => {
-        // check jwt
-        verify(reqPayload.token, process.env.JWT_KEY, (err, payload: JwtPayload) => {
-          if (err || !payload.userId) {
-            return reject();
-          }
+    onClientAuthentication: (req: {message: {token: string}}, res) => {
+      // check jwt
+      verify(req.message.token, process.env.JWT_KEY, (err, payload: JwtPayload) => {
+        if (err || !payload.userId) {
+          return res.error(err);
+        }
 
-          // get user with the given ID
-          const user = userService.getUser(payload.userId);
+        // get user with the given ID
+        const user = userService.getUser(payload.userId);
 
-          if (!user) {
-            return reject();
-          }
+        if (!user) {
+          return res.error('Authentication failed');
+        }
 
-          resolve(user);
-        });
+        res.send(user);
       });
-    }
+    },
+
   });
 
   console.log(
