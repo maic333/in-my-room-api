@@ -1,10 +1,6 @@
 import * as http from 'http';
 import app from './app';
-import { ChatServer } from './modules/chat-socket/rr-socket-server/index';
-import User from './types/user';
-import { verify } from 'jsonwebtoken';
-import { JwtPayload } from './types/jwt-payload';
-import { userService } from './services/user.service';
+import { ChatServer } from './modules/chat-server';
 
 // Create Express server
 const server = http.createServer(app);
@@ -14,28 +10,10 @@ const server = http.createServer(app);
  */
 server.listen(app.get('port'), () => {
   // create the Chat server
-  const chatServer = new ChatServer<User>({
+  const chatServer = new ChatServer({
     options: {
       server
     },
-    onClientAuthentication: (req: {message: {token: string}}, res) => {
-      // check jwt
-      verify(req.message.token, process.env.JWT_KEY, (err, payload: JwtPayload) => {
-        if (err || !payload.userId) {
-          return res.error(err);
-        }
-
-        // get user with the given ID
-        const user = userService.getUser(payload.userId);
-
-        if (!user) {
-          return res.error('Authentication failed');
-        }
-
-        res.send(user);
-      });
-    },
-
   });
 
   console.log(

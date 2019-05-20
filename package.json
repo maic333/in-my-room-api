@@ -1,6 +1,9 @@
 {
-  "name": "in-my-room",
+  "name": "in-my-room-api",
   "version": "0.1.0",
+  "description": "REST service of the web chat app",
+  "author": "Maic",
+  "license": "ISC",
   "scripts": {
     "start": "node dist/server.js",
     "serve-debug": "nodemon --inspect dist/server.js",
@@ -10,6 +13,7 @@
     "lint": "tslint -c tslint.json -p tsconfig.json"
   },
   "dependencies": {
+    "agile-client": "git+https://github.com/maic333/agile-client.git",
     "body-parser": "^1.18.3",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
@@ -18,6 +22,7 @@
     "jsonschema": "^1.2.4",
     "jsonwebtoken": "^8.5.1",
     "uuid": "^3.3.2",
+    "websocket-agile-server": "git+https://github.com/maic333/websocket-agile-server.git",
     "ws": "^6.2.1"
   },
   "devDependencies": {
