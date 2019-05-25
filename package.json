@@ -21,6 +21,7 @@
     "express": "^4.16.4",
     "jsonschema": "^1.2.4",
     "jsonwebtoken": "^8.5.1",
+    "maicjs": "git+https://github.com/maic333/maicjs-framework.git",
     "uuid": "^3.3.2",
     "websocket-agile-server": "git+https://github.com/maic333/websocket-agile-server.git",
     "ws": "^6.2.1"

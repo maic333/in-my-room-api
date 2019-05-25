@@ -1,27 +1,21 @@
-import * as http from 'http';
 import app from './app';
 import { ChatServer } from './modules/chat-server';
 
-// Create Express server
-const server = http.createServer(app);
-
 /**
- * Start Express server.
+ * Start MaicJS server.
  */
-server.listen(app.get('port'), () => {
-  // create the Chat server
-  const chatServer = new ChatServer({
-    options: {
-      server
-    },
+const port: any = process.env.PORT || 3000;
+app.listen(port)
+  .then(() => {
+    // create the Chat server
+    const chatServer = new ChatServer({
+      options: {
+        port: 4011
+      },
+    });
+
+    console.log(`App is running on http://localhost:${port}`);
+    console.log('Press CTRL-C to stop\n');
   });
 
-  console.log(
-    'App is running at http://localhost:%d in %s mode',
-    app.get('port'),
-    app.get('env')
-  );
-  console.log('Press CTRL-C to stop\n');
-});
-
-export default server;
+export default app;

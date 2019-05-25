@@ -1,4 +1,4 @@
-import express from 'express';
+import MaicApp from 'maicjs/dist/maic-app';
 import compression from 'compression';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
@@ -10,11 +10,10 @@ import jwtAuthentication from './middleware/jwt-authentication.middleware';
 // Load environment variables from .env file, where API keys and passwords are configured
 dotenv.config({path: '.env'});
 
-// Create Express server
-const app = express();
+// Create the app
+const app = new MaicApp();
 
-// Express configuration
-app.set('port', process.env.PORT || 3000);
+// App configuration
 app.use(compression());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
